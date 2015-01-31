@@ -1083,8 +1083,8 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should send an update request if there is sufficient data', function () {
                 var expected_cdr = { cleanBox: { x: 0, y: 0, w: 0, h: 0 },
-                                     dirtyBoxes: [ { x: 0, y: 0, w: 640, h: 20 } ] };
-                var expected_msg = RFB.messages.fbUpdateRequests(expected_cdr, 640, 20);
+                                     dirtyBoxes: [ { x: 0, y: 0, w: 240, h: 20 } ] };
+                var expected_msg = RFB.messages.fbUpdateRequests(expected_cdr, 240, 20);
 
                 client._framebufferUpdate = function () { return true; };
                 client._sock._websocket._receive_data(new Uint8Array([0]));
@@ -1099,8 +1099,8 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should resume receiving an update if we previously did not have enough data', function () {
                 var expected_cdr = { cleanBox: { x: 0, y: 0, w: 0, h: 0 },
-                                     dirtyBoxes: [ { x: 0, y: 0, w: 640, h: 20 } ] };
-                var expected_msg = RFB.messages.fbUpdateRequests(expected_cdr, 640, 20);
+                                     dirtyBoxes: [ { x: 0, y: 0, w: 240, h: 20 } ] };
+                var expected_msg = RFB.messages.fbUpdateRequests(expected_cdr, 240, 20);
 
                 // just enough to set FBU.rects
                 client._sock._websocket._receive_data(new Uint8Array([0, 0, 0, 3]));
@@ -1309,6 +1309,32 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
                         var expected = [];
                         for (var i = 0; i < 16; i++) { expected.push32(0xff00ff); }
+                        expect(client._display).to.have.displayed(new Uint8Array(expected));
+                    });
+
+                    it('should handle a tile with only bg specified and an empty frame afterwards', function () {
+                        // set the width so we can have two tiles
+                        client._fb_width = 8;
+                        client._display._fb_width = 8;
+                        client._display._viewportLoc.w = 8;
+
+                        var info = [{ x: 0, y: 0, width: 32, height: 4, encoding: 0x05 }];
+
+                        var rect = [];
+
+                        // send a bg frame
+                        rect.push(0x02);
+                        rect.push32(0xff00ff); // becomes 00ff00ff --> #00FF00 bg color
+
+                        // send an empty frame
+                        rect.push(0x00);
+
+                        send_fbu_msg(info, [rect], client);
+
+                        var expected = [];
+                        var i;
+                        for (i = 0; i < 16; i++) { expected.push32(0xff00ff); }     // rect 1: solid
+                        for (i = 0; i < 16; i++) { expected.push32(0xff00ff); }    // rect 2: same bkground color
                         expect(client._display).to.have.displayed(new Uint8Array(expected));
                     });
 

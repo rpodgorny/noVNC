@@ -252,12 +252,12 @@ var RFB;
             Util.Info("Sending Ctrl-Alt-Del");
 
             var arr = [];
-            arr = arr.concat(RFB.messages.keyEvent(0xFFE3, 1)); // Control
-            arr = arr.concat(RFB.messages.keyEvent(0xFFE9, 1)); // Alt
-            arr = arr.concat(RFB.messages.keyEvent(0xFFFF, 1)); // Delete
-            arr = arr.concat(RFB.messages.keyEvent(0xFFFF, 0)); // Delete
-            arr = arr.concat(RFB.messages.keyEvent(0xFFE9, 0)); // Alt
-            arr = arr.concat(RFB.messages.keyEvent(0xFFE3, 0)); // Control
+            arr = arr.concat(RFB.messages.keyEvent(XK_Control_L, 1));
+            arr = arr.concat(RFB.messages.keyEvent(XK_Alt_L, 1));
+            arr = arr.concat(RFB.messages.keyEvent(XK_Delete, 1));
+            arr = arr.concat(RFB.messages.keyEvent(XK_Delete, 0));
+            arr = arr.concat(RFB.messages.keyEvent(XK_Alt_L, 0));
+            arr = arr.concat(RFB.messages.keyEvent(XK_Control_L, 0));
             this._sock.send(arr);
         },
 
@@ -411,7 +411,9 @@ var RFB;
                 if (this._display && this._display.get_context()) {
                     this._keyboard.ungrab();
                     this._mouse.ungrab();
-                    this._display.defaultCursor();
+                    if (state !== 'connect' && state !== 'loaded') {
+                        this._display.defaultCursor();
+                    }
                     if (Util.get_logging() !== 'debug' || state === 'loaded') {
                         // Show noVNC logo on load and when disconnected, unless in
                         // debug mode
@@ -1215,6 +1217,7 @@ var RFB;
     RFB.prototype.set_local_cursor = function (cursor) {
         if (!cursor || (cursor in {'0': 1, 'no': 1, 'false': 1})) {
             this._local_cursor = false;
+            this._display.disableLocalCursor(); //Only show server-side cursor
         } else {
             if (this._display.get_cursor_uri()) {
                 this._local_cursor = true;
@@ -1496,8 +1499,7 @@ var RFB;
                         // Weird: ignore blanks are RAW
                         Util.Debug("     Ignoring blank after RAW");
                     } else {
-                        this._display.fillRect(x, y, w, h, rQ, rQi);
-                        rQi += this._FBU.bytes - 1;
+                        this._display.fillRect(x, y, w, h, this._FBU.background);
                     }
                 } else if (this._FBU.subencoding & 0x01) {  // Raw
                     this._display.blitImage(x, y, w, h, rQ, rQi);
